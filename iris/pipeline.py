@@ -29,7 +29,11 @@ def pipeline():
         name="training pipeline",
         arguments=[
             '--data', add_p.outputs['iris']
-        ]
+        ],
+        file_outputs={
+            'accuracy' : './accuracy.json',
+            'mlpipeline-metrics': './mlpipeline-metrics.json'
+        }
     )
 
     ml.after(add_p)

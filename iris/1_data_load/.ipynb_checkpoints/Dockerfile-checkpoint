@@ -1,5 +1,6 @@
-FROM python:3.8
+FROM python:3
+ENV PYTHONUNBUFFERED 1
 RUN mkdir /code
 WORKDIR /code
 COPY . /code/
-ENTRYPOINT ["python3","load_data.py"]
+ENTRYPOINT ["python", "load_data.py"]

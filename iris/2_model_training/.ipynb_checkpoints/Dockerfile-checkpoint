@@ -1,4 +1,5 @@
-FROM python:3.8
+FROM frolvlad/alpine-python-machinelearning
+ENV PYTHONUNBUFFERED 1
 RUN mkdir /code
 WORKDIR /code
 COPY . /code/
