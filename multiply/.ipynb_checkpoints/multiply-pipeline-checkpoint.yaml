@@ -1,0 +1,77 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: my-multiply-component-pipeline-
+  annotations: {pipelines.kubeflow.org/kfp_sdk_version: 1.6.3, pipelines.kubeflow.org/pipeline_compilation_time: '2022-12-27T14:20:25.257568',
+    pipelines.kubeflow.org/pipeline_spec: '{"description": "A pipeline with my component.",
+      "name": "My multiply component pipeline"}'}
+  labels: {pipelines.kubeflow.org/kfp_sdk_version: 1.6.3}
+spec:
+  entrypoint: my-multiply-component-pipeline
+  templates:
+  - name: generate-numbers
+    container:
+      args: [python -c "print('1\n2\n3\n4\n5\n6\n7\n8\n9\n10')" | tee /tmp/output]
+      command: [sh, -c]
+      image: python:3.9
+    outputs:
+      artifacts:
+      - {name: generate-numbers-output, path: /tmp/output}
+    metadata:
+      labels: {pipelines.kubeflow.org/kfp_sdk_version: 1.6.3, pipelines.kubeflow.org/pipeline-sdk-type: kfp}
+  - name: multiply-component
+    container:
+      args: []
+      command: [python3, /pipelines/component/src/program.py, --input-path, /tmp/inputs/input_1/data,
+        --param, '6', --output-path, /tmp/outputs/output_1/data]
+      image: kangwoo/kfp-component:latest
+    inputs:
+      artifacts:
+      - {name: generate-numbers-output, path: /tmp/inputs/input_1/data}
+    outputs:
+      parameters:
+      - name: multiply-component-output_1
+        valueFrom: {path: /tmp/outputs/output_1/data}
+      artifacts:
+      - {name: multiply-component-output_1, path: /tmp/outputs/output_1/data}
+    metadata:
+      labels: {pipelines.kubeflow.org/kfp_sdk_version: 1.6.3, pipelines.kubeflow.org/pipeline-sdk-type: kfp}
+      annotations: {pipelines.kubeflow.org/component_spec: '{"description": "Multiplication.",
+          "implementation": {"container": {"command": ["python3", "/pipelines/component/src/program.py",
+          "--input-path", {"inputPath": "input_1"}, "--param", {"inputValue": "parameter_1"},
+          "--output-path", {"outputPath": "output_1"}], "image": "kangwoo/kfp-component:latest"}},
+          "inputs": [{"description": "Data for Input 1", "name": "input_1", "type":
+          "String"}, {"default": "1", "description": "Parameter 1 description", "name":
+          "parameter_1", "type": "Integer"}], "name": "Multiply component", "outputs":
+          [{"description": "Output 1 data", "name": "output_1"}]}', pipelines.kubeflow.org/component_ref: '{"digest":
+          "1a0169659db321c208b5f33d3780017c5b2b6e035de7b5d76d907c7de06ce7e7", "url":
+          "./component.yaml"}', pipelines.kubeflow.org/arguments.parameters: '{"parameter_1":
+          "6"}'}
+  - name: my-multiply-component-pipeline
+    dag:
+      tasks:
+      - {name: generate-numbers, template: generate-numbers}
+      - name: multiply-component
+        template: multiply-component
+        dependencies: [generate-numbers]
+        arguments:
+          artifacts:
+          - {name: generate-numbers-output, from: '{{tasks.generate-numbers.outputs.artifacts.generate-numbers-output}}'}
+      - name: print
+        template: print
+        dependencies: [multiply-component]
+        arguments:
+          parameters:
+          - {name: multiply-component-output_1, value: '{{tasks.multiply-component.outputs.parameters.multiply-component-output_1}}'}
+  - name: print
+    container:
+      command: [echo, '{{inputs.parameters.multiply-component-output_1}}']
+      image: python:3.9
+    inputs:
+      parameters:
+      - {name: multiply-component-output_1}
+    metadata:
+      labels: {pipelines.kubeflow.org/kfp_sdk_version: 1.6.3, pipelines.kubeflow.org/pipeline-sdk-type: kfp}
+  arguments:
+    parameters: []
+  serviceAccountName: pipeline-runner

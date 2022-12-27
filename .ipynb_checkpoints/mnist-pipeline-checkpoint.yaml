@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: my-pipeline-
+  annotations: {pipelines.kubeflow.org/kfp_sdk_version: 1.6.3, pipelines.kubeflow.org/pipeline_compilation_time: '2022-12-27T13:38:24.087806',
+    pipelines.kubeflow.org/pipeline_spec: '{"description": "My machine learning pipeline",
+      "name": "My pipeline"}'}
+  labels: {pipelines.kubeflow.org/kfp_sdk_version: 1.6.3}
+spec:
+  entrypoint: my-pipeline
+  templates:
+  - name: mnist-train
+    container: {image: 'kangwoo/kfp-mnist:kfp'}
+    metadata:
+      labels: {pipelines.kubeflow.org/kfp_sdk_version: 1.6.3, pipelines.kubeflow.org/pipeline-sdk-type: kfp}
+      annotations: {pipelines.kubeflow.org/component_spec: '{"name": "Train component
+          op"}'}
+  - name: my-pipeline
+    dag:
+      tasks:
+      - {name: mnist-train, template: mnist-train}
+  arguments:
+    parameters: []
+  serviceAccountName: pipeline-runner

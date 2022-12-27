@@ -1,34 +1,35 @@
+
+
 import kfp
-
-from kfp.components import create_component_from_func
-
-from kfp.dsl import pipeline
+from kfp import dsl
 
 
-
-@create_component_from_func
-
-def print_and_return_number(number: int) -> int:
-    print(number)
-    return number
-
-
-
-@create_component_from_func
-
-def sum_and_print_numbers(number_1: int, number_2: int):
-    print(number_1 + number_2)
-
-
-
-@pipeline(name="example_pipeline")
-
-def example_pipeline(number_1: int, number_2: int):
-    number_1_result = print_and_return_number(number_1)
-    number_2_result = print_and_return_number(number_2)
-    sum_result = sum_and_print_numbers(
-        number_1=number_1_result.output, number_2=number_2_result.output
+@dsl.pipeline(name='my-pipeline')
+def pipeline():
+    op0 = dsl.ContainerOp(
+        name="gen-numbers",
+        image='python:alpine3.6',
+        command=["sh", "-c"],
+        arguments=[
+            'python -c "import random; import json; import sys; json.dump([i for i in range(20, 26)], open(\'/tmp/out.json\', \'w\'))"'],
+        file_outputs={'out': '/tmp/out.json'},
     )
 
-if __name__ == "__main__":
-    kfp.compiler.Compiler().compile(example_pipeline, "example_pipeline.yaml")
+    with dsl.ParallelFor(op0.output) as item:
+        op1 = dsl.ContainerOp(
+            name="my-item-print",
+            image="library/bash:4.4.23",
+            command=["sh", "-c"],
+            arguments=["echo do output op1 item: %s" % item],
+        )
+
+    op_out = dsl.ContainerOp(
+        name="total",
+        image="python:alpine3.6",
+        command=["sh", "-c"],
+        arguments=['echo output gen-numbers: %s && python -c "print(sum(%s))"' % (op0.output, op0.output)],
+    )
+
+
+if __name__ == '__main__':
+    kfp.compiler.Compiler().compile(pipeline, __file__ + '.yaml')

@@ -1,5 +1,3 @@
-
-
 import kfp
 from kfp import dsl
 
@@ -32,4 +30,4 @@ def pipeline():
 
 
 if __name__ == '__main__':
-    kfp.compiler.Compiler().compile(pipeline, __file__ + '.yaml')
+    kfp.compiler.Compiler().compile(pipeline,'cheating-containerless.yaml')

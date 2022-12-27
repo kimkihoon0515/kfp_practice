@@ -7,7 +7,7 @@ from kfp import dsl
 )
 
 def kf_iris_pipeline():
-    add_p = dsl.ContainerOp(
+    add_p = dsl.ContainerOp( # 컨테이너 이미지를 다룬다.
         name="load iris data pipeline",
         image="kimkihoon0515/kf_iris_preprocessing:0.5",
         arguments=[
