@@ -1,24 +1,15 @@
 import kfp
 import kfp.components as comp
 from kfp import dsl
-
-def print_op(msg):
-    
-    return dsl.ContainerOp(
-        name='Print',
-        command=['ehco',msg],
-    )
-
-
-
 @dsl.pipeline(
-    name='iris-train',
-    description='training iris-dataset demo'
+    name='kf-iris',
+    description='kubflow-pipeline iris test'
 )
 
-def pipeline():
+def kf_iris_pipeline():
     add_p = dsl.ContainerOp(
         name="load iris data pipeline",
+        image="kimkihoon0515/kf_iris_preprocessing:0.5",
         arguments=[
             '--data_path', './Iris.csv'
         ],
@@ -27,21 +18,14 @@ def pipeline():
 
     ml = dsl.ContainerOp(
         name="training pipeline",
+        image="kimkihoon0515/kf_iris_train:0.5",
         arguments=[
             '--data', add_p.outputs['iris']
         ]
     )
 
     ml.after(add_p)
-    baseline = 0.7
-    
-    with dsl.Condition(ml.outputs['accuracy'] > baseline) as check_condition:
-        print_op(f"accuracy는 {ml.outputs['accuracy']}로 accuracy baseline인 {baseline}보다 크다.")
-    
-    with dsl.Condition(ml.outputs['accuracy'] < baseline) as check_condition:
-        print_op(f"accuracy는 {ml.outputs['accuracy']}로 accuracy baseline인 {baseline}보다 작다.")
-
     
 if __name__ == "__main__":
     import kfp.compiler as compiler
-    compiler.Compiler().compile(pipeline, __file__ + ".tar.gz")
+    compiler.Compiler().compile(kf_iris_pipeline, "pipeline.yaml")

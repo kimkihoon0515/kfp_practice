@@ -1,0 +1,45 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: kf-iris-
+  annotations: {pipelines.kubeflow.org/kfp_sdk_version: 1.6.3, pipelines.kubeflow.org/pipeline_compilation_time: '2022-12-27T01:01:07.655815',
+    pipelines.kubeflow.org/pipeline_spec: '{"description": "kubflow-pipeline iris
+      test", "name": "kf-iris"}'}
+  labels: {pipelines.kubeflow.org/kfp_sdk_version: 1.6.3}
+spec:
+  entrypoint: kf-iris
+  templates:
+  - name: kf-iris
+    dag:
+      tasks:
+      - {name: load-iris-data-pipeline, template: load-iris-data-pipeline}
+      - name: training-pipeline
+        template: training-pipeline
+        dependencies: [load-iris-data-pipeline]
+        arguments:
+          parameters:
+          - {name: load-iris-data-pipeline-iris, value: '{{tasks.load-iris-data-pipeline.outputs.parameters.load-iris-data-pipeline-iris}}'}
+  - name: load-iris-data-pipeline
+    container:
+      args: [--data_path, ./Iris.csv]
+      image: kimkihoon0515/kf_iris_preprocessing:0.5
+    outputs:
+      parameters:
+      - name: load-iris-data-pipeline-iris
+        valueFrom: {path: /iris.csv}
+      artifacts:
+      - {name: load-iris-data-pipeline-iris, path: /iris.csv}
+    metadata:
+      labels: {pipelines.kubeflow.org/kfp_sdk_version: 1.6.3, pipelines.kubeflow.org/pipeline-sdk-type: kfp}
+  - name: training-pipeline
+    container:
+      args: [--data, '{{inputs.parameters.load-iris-data-pipeline-iris}}']
+      image: kimkihoon0515/kf_iris_train:0.5
+    inputs:
+      parameters:
+      - {name: load-iris-data-pipeline-iris}
+    metadata:
+      labels: {pipelines.kubeflow.org/kfp_sdk_version: 1.6.3, pipelines.kubeflow.org/pipeline-sdk-type: kfp}
+  arguments:
+    parameters: []
+  serviceAccountName: pipeline-runner
