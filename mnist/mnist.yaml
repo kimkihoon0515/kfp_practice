@@ -1,0 +1,26 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: mnist-
+  annotations: {pipelines.kubeflow.org/kfp_sdk_version: 1.8.18, pipelines.kubeflow.org/pipeline_compilation_time: '2022-12-28T14:55:13.070559',
+    pipelines.kubeflow.org/pipeline_spec: '{"name": "mnist"}'}
+  labels: {pipelines.kubeflow.org/kfp_sdk_version: 1.8.18}
+spec:
+  entrypoint: mnist
+  templates:
+  - name: download-load-data-pipeline
+    container:
+      command: [python, data.py]
+      image: kimkihoon0515/mnist-data:latest
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.18
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+  - name: mnist
+    dag:
+      tasks:
+      - {name: download-load-data-pipeline, template: download-load-data-pipeline}
+  arguments:
+    parameters: []
+  serviceAccountName: pipeline-runner
