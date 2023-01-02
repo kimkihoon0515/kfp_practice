@@ -1,0 +1,156 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: mnist-train-
+  annotations: {pipelines.kubeflow.org/kfp_sdk_version: 1.8.18, pipelines.kubeflow.org/pipeline_compilation_time: '2023-01-02T10:06:53.074231',
+    pipelines.kubeflow.org/pipeline_spec: '{"description": "train mnist datasets downloaded
+      from minio", "name": "mnist-train"}'}
+  labels: {pipelines.kubeflow.org/kfp_sdk_version: 1.8.18}
+spec:
+  entrypoint: mnist-train
+  templates:
+  - name: mnist-train
+    dag:
+      tasks:
+      - {name: train, template: train}
+  - name: train
+    container:
+      args: []
+      command:
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - "def train():\n  import torch.nn as nn\n  import torch\n  from torchvision\
+        \ import datasets\n  from torchvision import transforms\n  from torch.utils.data\
+        \ import DataLoader\n  import numpy as np\n  import os\n  class Net(nn.Module):\
+        \ # \uBAA8\uB378 \uD074\uB798\uC2A4 \uC815\uC758 \uBD80\uBD84\n\n      def\
+        \ __init__(self):\n          super(Net, self).__init__()\n          self.fc1\
+        \ = nn.Linear(784,100) # MNIST \uB370\uC774\uD130\uC14B\uC774 28*28\uB85C\
+        \ \uCD1D 784\uAC1C\uC758 \uD53D\uC140\uB85C \uC774\uB8E8\uC5B4\uC838\uC788\
+        \uAE30 \uB54C\uBB38\uC5D0 784\uB97C \uC785\uB825 \uD06C\uAE30\uB85C \uB123\
+        \uC74C.\n          self.relu = nn.ReLU()\n          self.fc2 = nn.Linear(100,100)\
+        \ # \uC740\uB2C9\uCE35\n          self.fc3 = nn.Linear(100,10) # \uCD9C\uB825\
+        \uCE35 0~9\uAE4C\uC9C0 \uCD1D 10\uAC1C\uC758 \uD074\uB798\uC2A4\uB85C \uACB0\
+        \uACFC\uAC00 \uB098\uC634.\n\n      def forward(self, x): # \uC785\uB825\uCE35\
+        \ -> \uD65C\uC131\uD654 \uD568\uC218(ReLU) -> \uC740\uB2C9\uCE35 -> \uD65C\
+        \uC131\uD654 \uD568\uC218(ReLU) -> \uCD9C\uB825\uCE35\n          x1 = self.fc1(x)\n\
+        \          x2 = self.relu(x1)\n          x3 = self.fc2(x2)\n          x4 =\
+        \ self.relu(x3)\n          x5 = self.fc3(x4)\n\n          return x5\n\n  from\
+        \ minio import Minio\n\n  minio_client = Minio(\n      \"172.17.0.38:9000\"\
+        ,\n      access_key=\"minio\",\n      secret_key=\"minio123\",\n      secure=False\n\
+        \  )\n\n  minio_bucket = \"mlpipeline\"\n\n  for item in minio_client.list_objects(minio_bucket,prefix=\"\
+        mnist\",recursive=True):\n      minio_client.fget_object(minio_bucket,item.object_name,item.object_name)\n\
+        \n  train_dataset = datasets.MNIST(root=\"./mnist/\",\n                  \
+        \        train=True,\n                          transform=transforms.ToTensor(),\n\
+        \                          download=False) # \uD559\uC2B5 dataset \uC815\uC758\
+        \n\n  test_dataset = datasets.MNIST(root=\"./mnist/\",\n                 \
+        \         train=False,\n                          transform=transforms.ToTensor(),\
+        \ \n                          download=False) # \uD3C9\uAC00 dataset \uC815\
+        \uC758\n\n  batch_size = 100 # \uBC30\uCE58 \uC0AC\uC774\uC988 \uC815\uC758\
+        . \uB370\uC774\uD130\uC14B\uC744 \uC798\uAC1C \uCABC\uAC1C\uC11C \uBB36\uC74C\
+        \uC73C\uB85C \uB9CC\uB4DC\uB294 \uB370 \uAE30\uC5EC\uD55C\uB2E4.\n  train_loader\
+        \ = DataLoader(train_dataset, batch_size=batch_size, shuffle=True) # \uD559\
+        \uC2B5 \uB370\uC774\uD130\uC14B\uC744 \uBC30\uCE58 \uC0AC\uC774\uC988 \uD06C\
+        \uAE30\uB9CC\uD07C\uC529 \uC798\uB77C\uC11C \uBB36\uC74C\uC73C\uB85C \uB9CC\
+        \uB4E0\uB2E4. \uBB36\uC74C\uC758 \uAC1C\uC218\uB294 train_dataset / batch_size\n\
+        \  test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)\
+        \ # train_dataloader\uC640 \uB9C8\uCC2C\uAC00\uC9C0\n\n  model = Net() # \uBAA8\
+        \uB378 \uC815\uC758\n  loss_function = nn.CrossEntropyLoss() # \uC2E4\uC81C\
+        \ \uC815\uB2F5\uACFC \uC608\uCE21\uAC12\uC758 \uCC28\uC774\uB97C \uC218\uCE58\
+        \uD654\uD574\uC8FC\uB294 \uD568\uC218.\n\n  optimizer = torch.optim.SGD(model.parameters(),lr=0.01,momentum=0.9)\n\
+        \  epochs = 10# \uC5BC\uB9C8\uB098 \uD559\uC2B5\uD560 \uC9C0 \uC815\uD558\uB294\
+        \ \uC778\uC790.\n\n  best_accuracy = 0 # \uD3C9\uAC00 \uC9C0\uD45C\n  model.zero_grad()\
+        \ # \uD559\uC2B5 \uC804\uC5D0 \uBAA8\uB378\uC758 \uBAA8\uB4E0 weight, bias\
+        \ \uAC12\uB4E4\uC744 \uCD08\uAE30\uD654\n\n  for epoch in range(epochs):\n\
+        \n    model.train() # \uD559\uC2B5\n    train_accuracy = 0 # metric\n    train_loss\
+        \ = 0 # metric\n\n    for images, labels in train_loader:\n      images =\
+        \ images.reshape(batch_size,784)\n      image = model(images)\n      loss\
+        \ = loss_function(image,labels)\n\n      optimizer.zero_grad()\n      loss.backward()\n\
+        \      optimizer.step()\n\n      prediction = torch.argmax(image,1)\n    \
+        \  correct = (prediction == labels)\n      train_accuracy+= correct.sum().item()\
+        \ / len(train_dataset)\n      train_loss += loss.item() / len(train_loader)\n\
+        \n    model.eval() # \uD3C9\uAC00\n    val_accuracy = 0 # metric\n    val_loss\
+        \ = 0 # metric\n\n    for images,labels in test_loader:\n      images = images.reshape(batch_size,784)\n\
+        \      image = model(images)\n      loss = loss_function(image,labels)\n\n\
+        \      correct = (torch.argmax(image,1) == labels)\n      val_accuracy +=\
+        \ correct.sum().item() / len(test_dataset)\n      val_loss += loss.item()\
+        \ / len(test_loader)\n\n    print(f'epoch: {epoch}/{epochs} train_loss: {train_loss:.5}\
+        \ train_accuracy: {train_accuracy:.5} val_loss: {val_loss:.5} val_accuracy:\
+        \ {val_accuracy:.5}')\n\n    if best_accuracy < val_accuracy: # \uC131\uB2A5\
+        \uC774 \uAC00\uC7A5 \uC88B\uC740 \uBAA8\uB378\uB85C \uAC31\uC2E0\n      best_accuracy\
+        \ = val_accuracy\n      torch.save(model.state_dict(),'best_model.pt')\n \
+        \     print(f\"===========> Save Model(Epoch: {epoch}, Accuracy: {best_accuracy:.5})\"\
+        )\n\n    print(\"--------------------------------------------------------------------------------------------\"\
+        )\n\n  minio_client.fput_object(minio_bucket,\"best_model.pt\",\"./best_model.pt\"\
+        )\n\nimport argparse\n_parser = argparse.ArgumentParser(prog='Train', description='')\n\
+        _parsed_args = vars(_parser.parse_args())\n\n_outputs = train(**_parsed_args)\n"
+      image: public.ecr.aws/j1r0q0g6/notebooks/notebook-servers/jupyter-pytorch:v1.5.0
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.18
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": [], "command": ["sh", "-ec", "program_path=$(mktemp)\nprintf \"%s\"
+          \"$0\" > \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n", "def
+          train():\n  import torch.nn as nn\n  import torch\n  from torchvision import
+          datasets\n  from torchvision import transforms\n  from torch.utils.data
+          import DataLoader\n  import numpy as np\n  import os\n  class Net(nn.Module):
+          # \ubaa8\ub378 \ud074\ub798\uc2a4 \uc815\uc758 \ubd80\ubd84\n\n      def
+          __init__(self):\n          super(Net, self).__init__()\n          self.fc1
+          = nn.Linear(784,100) # MNIST \ub370\uc774\ud130\uc14b\uc774 28*28\ub85c
+          \ucd1d 784\uac1c\uc758 \ud53d\uc140\ub85c \uc774\ub8e8\uc5b4\uc838\uc788\uae30
+          \ub54c\ubb38\uc5d0 784\ub97c \uc785\ub825 \ud06c\uae30\ub85c \ub123\uc74c.\n          self.relu
+          = nn.ReLU()\n          self.fc2 = nn.Linear(100,100) # \uc740\ub2c9\uce35\n          self.fc3
+          = nn.Linear(100,10) # \ucd9c\ub825\uce35 0~9\uae4c\uc9c0 \ucd1d 10\uac1c\uc758
+          \ud074\ub798\uc2a4\ub85c \uacb0\uacfc\uac00 \ub098\uc634.\n\n      def forward(self,
+          x): # \uc785\ub825\uce35 -> \ud65c\uc131\ud654 \ud568\uc218(ReLU) -> \uc740\ub2c9\uce35
+          -> \ud65c\uc131\ud654 \ud568\uc218(ReLU) -> \ucd9c\ub825\uce35\n          x1
+          = self.fc1(x)\n          x2 = self.relu(x1)\n          x3 = self.fc2(x2)\n          x4
+          = self.relu(x3)\n          x5 = self.fc3(x4)\n\n          return x5\n\n  from
+          minio import Minio\n\n  minio_client = Minio(\n      \"172.17.0.38:9000\",\n      access_key=\"minio\",\n      secret_key=\"minio123\",\n      secure=False\n  )\n\n  minio_bucket
+          = \"mlpipeline\"\n\n  for item in minio_client.list_objects(minio_bucket,prefix=\"mnist\",recursive=True):\n      minio_client.fget_object(minio_bucket,item.object_name,item.object_name)\n\n  train_dataset
+          = datasets.MNIST(root=\"./mnist/\",\n                          train=True,\n                          transform=transforms.ToTensor(),\n                          download=False)
+          # \ud559\uc2b5 dataset \uc815\uc758\n\n  test_dataset = datasets.MNIST(root=\"./mnist/\",\n                          train=False,\n                          transform=transforms.ToTensor(),
+          \n                          download=False) # \ud3c9\uac00 dataset \uc815\uc758\n\n  batch_size
+          = 100 # \ubc30\uce58 \uc0ac\uc774\uc988 \uc815\uc758. \ub370\uc774\ud130\uc14b\uc744
+          \uc798\uac1c \ucabc\uac1c\uc11c \ubb36\uc74c\uc73c\ub85c \ub9cc\ub4dc\ub294
+          \ub370 \uae30\uc5ec\ud55c\ub2e4.\n  train_loader = DataLoader(train_dataset,
+          batch_size=batch_size, shuffle=True) # \ud559\uc2b5 \ub370\uc774\ud130\uc14b\uc744
+          \ubc30\uce58 \uc0ac\uc774\uc988 \ud06c\uae30\ub9cc\ud07c\uc529 \uc798\ub77c\uc11c
+          \ubb36\uc74c\uc73c\ub85c \ub9cc\ub4e0\ub2e4. \ubb36\uc74c\uc758 \uac1c\uc218\ub294
+          train_dataset / batch_size\n  test_loader = DataLoader(test_dataset, batch_size=batch_size,
+          shuffle=True) # train_dataloader\uc640 \ub9c8\ucc2c\uac00\uc9c0\n\n  model
+          = Net() # \ubaa8\ub378 \uc815\uc758\n  loss_function = nn.CrossEntropyLoss()
+          # \uc2e4\uc81c \uc815\ub2f5\uacfc \uc608\uce21\uac12\uc758 \ucc28\uc774\ub97c
+          \uc218\uce58\ud654\ud574\uc8fc\ub294 \ud568\uc218.\n\n  optimizer = torch.optim.SGD(model.parameters(),lr=0.01,momentum=0.9)\n  epochs
+          = 10# \uc5bc\ub9c8\ub098 \ud559\uc2b5\ud560 \uc9c0 \uc815\ud558\ub294 \uc778\uc790.\n\n  best_accuracy
+          = 0 # \ud3c9\uac00 \uc9c0\ud45c\n  model.zero_grad() # \ud559\uc2b5 \uc804\uc5d0
+          \ubaa8\ub378\uc758 \ubaa8\ub4e0 weight, bias \uac12\ub4e4\uc744 \ucd08\uae30\ud654\n\n  for
+          epoch in range(epochs):\n\n    model.train() # \ud559\uc2b5\n    train_accuracy
+          = 0 # metric\n    train_loss = 0 # metric\n\n    for images, labels in train_loader:\n      images
+          = images.reshape(batch_size,784)\n      image = model(images)\n      loss
+          = loss_function(image,labels)\n\n      optimizer.zero_grad()\n      loss.backward()\n      optimizer.step()\n\n      prediction
+          = torch.argmax(image,1)\n      correct = (prediction == labels)\n      train_accuracy+=
+          correct.sum().item() / len(train_dataset)\n      train_loss += loss.item()
+          / len(train_loader)\n\n    model.eval() # \ud3c9\uac00\n    val_accuracy
+          = 0 # metric\n    val_loss = 0 # metric\n\n    for images,labels in test_loader:\n      images
+          = images.reshape(batch_size,784)\n      image = model(images)\n      loss
+          = loss_function(image,labels)\n\n      correct = (torch.argmax(image,1)
+          == labels)\n      val_accuracy += correct.sum().item() / len(test_dataset)\n      val_loss
+          += loss.item() / len(test_loader)\n\n    print(f''epoch: {epoch}/{epochs}
+          train_loss: {train_loss:.5} train_accuracy: {train_accuracy:.5} val_loss:
+          {val_loss:.5} val_accuracy: {val_accuracy:.5}'')\n\n    if best_accuracy
+          < val_accuracy: # \uc131\ub2a5\uc774 \uac00\uc7a5 \uc88b\uc740 \ubaa8\ub378\ub85c
+          \uac31\uc2e0\n      best_accuracy = val_accuracy\n      torch.save(model.state_dict(),''best_model.pt'')\n      print(f\"===========>
+          Save Model(Epoch: {epoch}, Accuracy: {best_accuracy:.5})\")\n\n    print(\"--------------------------------------------------------------------------------------------\")\n\n  minio_client.fput_object(minio_bucket,\"best_model.pt\",\"./best_model.pt\")\n\nimport
+          argparse\n_parser = argparse.ArgumentParser(prog=''Train'', description='''')\n_parsed_args
+          = vars(_parser.parse_args())\n\n_outputs = train(**_parsed_args)\n"], "image":
+          "public.ecr.aws/j1r0q0g6/notebooks/notebook-servers/jupyter-pytorch:v1.5.0"}},
+          "name": "Train"}', pipelines.kubeflow.org/component_ref: '{}'}
+  arguments:
+    parameters: []
+  serviceAccountName: pipeline-runner

@@ -2,25 +2,71 @@ apiVersion: argoproj.io/v1alpha1
 kind: Workflow
 metadata:
   generateName: mnist-
-  annotations: {pipelines.kubeflow.org/kfp_sdk_version: 1.8.18, pipelines.kubeflow.org/pipeline_compilation_time: '2022-12-28T14:55:13.070559',
-    pipelines.kubeflow.org/pipeline_spec: '{"name": "mnist"}'}
+  annotations: {pipelines.kubeflow.org/kfp_sdk_version: 1.8.18, pipelines.kubeflow.org/pipeline_compilation_time: '2023-01-02T10:54:38.611561',
+    pipelines.kubeflow.org/pipeline_spec: '{"description": "data = dsl.ContainerOp(",
+      "name": "mnist"}'}
   labels: {pipelines.kubeflow.org/kfp_sdk_version: 1.8.18}
 spec:
   entrypoint: mnist
   templates:
-  - name: download-load-data-pipeline
+  - name: download-dataset
     container:
-      command: [python, data.py]
-      image: kimkihoon0515/mnist-data:latest
+      args: []
+      command:
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - "def download_dataset():\n    download_root = 'MNIST_data/' # \uB370\uC774\
+        \uD130 \uB2E4\uC6B4\uB85C\uB4DC \uACBD\uB85C\n\n    train_dataset = datasets.MNIST(root=download_root,\n\
+        \                            train=True,\n                            transform=transforms.ToTensor(),\n\
+        \                            download=True) # \uD559\uC2B5 dataset \uC815\uC758\
+        \n\n    test_dataset = datasets.MNIST(root=download_root,\n              \
+        \              train=False,\n                            transform=transforms.ToTensor(),\
+        \ \n                            download=True) # \uD3C9\uAC00 dataset \uC815\
+        \uC758\n\n    batch_size = 100 # \uBC30\uCE58 \uC0AC\uC774\uC988 \uC815\uC758\
+        . \uB370\uC774\uD130\uC14B\uC744 \uC798\uAC1C \uCABC\uAC1C\uC11C \uBB36\uC74C\
+        \uC73C\uB85C \uB9CC\uB4DC\uB294 \uB370 \uAE30\uC5EC\uD55C\uB2E4.\n    train_loader\
+        \ = DataLoader(train_dataset, batch_size=batch_size, shuffle=True) # \uD559\
+        \uC2B5 \uB370\uC774\uD130\uC14B\uC744 \uBC30\uCE58 \uC0AC\uC774\uC988 \uD06C\
+        \uAE30\uB9CC\uD07C\uC529 \uC798\uB77C\uC11C \uBB36\uC74C\uC73C\uB85C \uB9CC\
+        \uB4E0\uB2E4. \uBB36\uC74C\uC758 \uAC1C\uC218\uB294 train_dataset / batch_size\n\
+        \    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)\
+        \ # train_dataloader\uC640 \uB9C8\uCC2C\uAC00\uC9C0\n\n    print(len(train_loader),len(test_loader))\n\
+        \n    return train_loader,test_loader\n\nimport argparse\n_parser = argparse.ArgumentParser(prog='Download\
+        \ dataset', description='')\n_parsed_args = vars(_parser.parse_args())\n\n\
+        _outputs = download_dataset(**_parsed_args)\n"
+      image: public.ecr.aws/j1r0q0g6/notebooks/notebook-servers/jupyter-pytorch:v1.5.0
     metadata:
       labels:
         pipelines.kubeflow.org/kfp_sdk_version: 1.8.18
         pipelines.kubeflow.org/pipeline-sdk-type: kfp
         pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": [], "command": ["sh", "-ec", "program_path=$(mktemp)\nprintf \"%s\"
+          \"$0\" > \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n", "def
+          download_dataset():\n    download_root = ''MNIST_data/'' # \ub370\uc774\ud130
+          \ub2e4\uc6b4\ub85c\ub4dc \uacbd\ub85c\n\n    train_dataset = datasets.MNIST(root=download_root,\n                            train=True,\n                            transform=transforms.ToTensor(),\n                            download=True)
+          # \ud559\uc2b5 dataset \uc815\uc758\n\n    test_dataset = datasets.MNIST(root=download_root,\n                            train=False,\n                            transform=transforms.ToTensor(),
+          \n                            download=True) # \ud3c9\uac00 dataset \uc815\uc758\n\n    batch_size
+          = 100 # \ubc30\uce58 \uc0ac\uc774\uc988 \uc815\uc758. \ub370\uc774\ud130\uc14b\uc744
+          \uc798\uac1c \ucabc\uac1c\uc11c \ubb36\uc74c\uc73c\ub85c \ub9cc\ub4dc\ub294
+          \ub370 \uae30\uc5ec\ud55c\ub2e4.\n    train_loader = DataLoader(train_dataset,
+          batch_size=batch_size, shuffle=True) # \ud559\uc2b5 \ub370\uc774\ud130\uc14b\uc744
+          \ubc30\uce58 \uc0ac\uc774\uc988 \ud06c\uae30\ub9cc\ud07c\uc529 \uc798\ub77c\uc11c
+          \ubb36\uc74c\uc73c\ub85c \ub9cc\ub4e0\ub2e4. \ubb36\uc74c\uc758 \uac1c\uc218\ub294
+          train_dataset / batch_size\n    test_loader = DataLoader(test_dataset, batch_size=batch_size,
+          shuffle=True) # train_dataloader\uc640 \ub9c8\ucc2c\uac00\uc9c0\n\n    print(len(train_loader),len(test_loader))\n\n    return
+          train_loader,test_loader\n\nimport argparse\n_parser = argparse.ArgumentParser(prog=''Download
+          dataset'', description='''')\n_parsed_args = vars(_parser.parse_args())\n\n_outputs
+          = download_dataset(**_parsed_args)\n"], "image": "public.ecr.aws/j1r0q0g6/notebooks/notebook-servers/jupyter-pytorch:v1.5.0"}},
+          "name": "Download dataset"}', pipelines.kubeflow.org/component_ref: '{}'}
   - name: mnist
     dag:
       tasks:
-      - {name: download-load-data-pipeline, template: download-load-data-pipeline}
+      - {name: download-dataset, template: download-dataset}
   arguments:
     parameters: []
   serviceAccountName: pipeline-runner
